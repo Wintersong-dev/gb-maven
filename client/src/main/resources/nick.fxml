@@ -1,0 +1,11 @@
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<VBox fx:controller="NickController" xmlns:fx="http://javafx.com/fxml" alignment="center">
+    <Label text="Новый никнейм" />
+    <TextField fx:id="newNickField" />
+    <Button text="Применить" onAction="#changeNick"/>
+
+</VBox>

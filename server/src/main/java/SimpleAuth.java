@@ -50,4 +50,9 @@ public class SimpleAuth implements AuthService {
         System.out.println("Пользователь зарегистрирован: " + _login + "/" + _pwd);
         return true;
     }
+
+    @Override
+    public boolean changeNickname(String oldNick, String newNick) {
+        return false;
+    }
 }

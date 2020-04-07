@@ -14,7 +14,8 @@ public class Server {
         clients = new Vector<>();
         ServerSocket server = null;
         Socket socket = null;
-        authService = new SimpleAuth(this);
+        //authService = new SimpleAuth(this);
+        authService = new DBAuthService(this);
         try {
             server = new ServerSocket(PORT);
             System.out.println("Сервер запущен");
@@ -77,7 +78,10 @@ public class Server {
     // Отправка ЛС
     void privateMessage(Connectable sender, Connectable receiver, String msg) {
         sender.sendMsg(sender.getNickname(), receiver.getNickname() + ", " + msg);
-        receiver.sendMsg(sender.getNickname(),receiver.getNickname() + ", " + msg);
+        if (sender != receiver) {
+            receiver.sendMsg(sender.getNickname(),receiver.getNickname() + ", " + msg);
+        }
+
     }
 
     // Получаем клиента по его нику
@@ -96,7 +100,7 @@ public class Server {
         boolean res = false;
 
         for (ClientHandler client : clients) {
-            if (client.getLogin() == login) {
+            if (client.getLogin().equals(login)) {
                 res = true;
                 break;
             }

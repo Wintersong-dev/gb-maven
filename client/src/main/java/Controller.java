@@ -6,10 +6,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.ListView;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
@@ -26,6 +23,8 @@ import java.util.ResourceBundle;
 
 
 public class Controller implements Initializable {
+    @FXML
+    public Button changeNickname;
     @FXML
     private HBox authPanel;
     @FXML
@@ -49,6 +48,7 @@ public class Controller implements Initializable {
     private final int MSG_COMMON = 0;
     private final int MSG_AUTHOK = 1;
     private final int MSG_CLIST = 2;
+    private final int MSG_NICKOK = 3;
 
 
     private Socket socket;
@@ -56,6 +56,7 @@ public class Controller implements Initializable {
     private DataOutputStream out;
 
     Stage regStage;
+    Stage nickStage;
 
     public void setAuth(boolean _auth) {
         isAuth = _auth;
@@ -73,7 +74,7 @@ public class Controller implements Initializable {
 
     public void setNickname(String nickname) {
         this.nickname = nickname;
-        setTitle(nickname);
+        setTitle("Chat: " + nickname);
     }
 
     public void auth() {
@@ -111,6 +112,7 @@ public class Controller implements Initializable {
                         socket.close();
                         setAuth(false);
                         regStage = null;
+                        nickStage = null;
                     } catch (IOException | NullPointerException ignore) {}
                 }
             });
@@ -183,6 +185,10 @@ public class Controller implements Initializable {
                     }
                 });
                 break;
+            case MSG_NICKOK:
+                String[] msg = str.split(" ");
+                setNickname(msg[1]);
+                break;
             case MSG_COMMON:
                 textArea.appendText(str + "\n");
         }
@@ -239,8 +245,6 @@ public class Controller implements Initializable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-
     }
 
     private int parseMsg(String msg) {
@@ -249,6 +253,8 @@ public class Controller implements Initializable {
             res = MSG_AUTHOK;
         } else if (msg.startsWith("/clist ")) {
             res = MSG_CLIST;
+        } else if (msg.startsWith("/nickok ")) {
+            res = MSG_NICKOK;
         }
 
         return res;
@@ -256,7 +262,48 @@ public class Controller implements Initializable {
 
     private void sendMsgEx(String msg) throws IOException {
         out.writeUTF(msg);
-        System.out.println(msg);
         out.flush();
+    }
+
+    public void changeNick(ActionEvent actionEvent) {
+        if (nickStage == null) {
+            nickStage = createNickWindow();
+        }
+        nickStage.show();
+    }
+
+    private Stage createNickWindow() {
+
+        Parent root = null;
+        Stage stage = null;
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/nick.fxml"));
+            root = loader.load();
+            stage = new Stage();
+            stage.initModality(Modality.APPLICATION_MODAL);
+
+            NickController nickController = loader.getController();
+            nickController.controller = this;
+
+            stage.setTitle("Смена ника");
+            stage.setScene(new Scene(root, 125, 100));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return stage;
+    }
+
+    void tryChangeNick(String nick) {
+        String msg = String.format("/nick %s", nick);
+        if (socket == null || socket.isClosed()) {
+            connect();
+        }
+
+        try {
+            sendMsgEx(msg);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -18,6 +18,7 @@
     </HBox>
 
     <HBox fx:id="msgPanel" visible="false">
+        <Button fx:id="changeNickname" text="Сменить ник" onAction="#changeNick"/>
         <TextField fx:id="msgField" onAction="#sendMsg" HBox.hgrow="ALWAYS"/>
         <Button text="Отправить" onAction="#sendMsg"/>
     </HBox>

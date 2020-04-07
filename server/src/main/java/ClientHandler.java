@@ -20,6 +20,7 @@ public class ClientHandler implements Connectable {
     private final int MSG_END = 2;      // Запрос на выход из чата
     private final int MSG_WHISPER = 3;  // Запрос на личное сообщение
     private final int MSG_REG = 4;      // Запрос на регистрацию
+    private final int MSG_NICK = 5;     // Запрос на смену ника
 
     ClientHandler(Socket _socket, Server _server) {
         server = _server;
@@ -48,19 +49,21 @@ public class ClientHandler implements Connectable {
 
                                 // Если логин "*" - клиент уже залогинен
                                 if (!newNick.equals("*")) {
-                                    authOk(tokens[0], newNick);
+                                    authOk(tokens[1], newNick);
                                     break;
+                                } else {
+                                    sysMsg("Этот пользователь уже в сети!");
                                 }
 
                             // Неудача!
                             } else {
-                                sendMsg(server.systemUser.getNickname(), "Неверный логин/пароль");
+                                sysMsg("Неверный логин/пароль");
                             }
                         } else if (parseMessage(str) == MSG_REG) {
                             tokens = str.split(" ", 4);
                             boolean regResult = server.getAuthService().register(tokens[1], tokens[2], tokens[3]);
                             if (!regResult) {
-                                sendMsg(server.systemUser.getNickname(), "Такой логин или пароль или никнейм уже занят");
+                                sysMsg("Такой логин или пароль или никнейм уже занят");
                             }
                         }
 
@@ -69,7 +72,6 @@ public class ClientHandler implements Connectable {
                     // Рабочий цикл чата
                     while (true) {
                         str = in.readUTF();
-                        System.out.println(str);
 
                         // Парсим пришедшее сообщшние
                         switch (parseMessage(str)) {
@@ -82,6 +84,16 @@ public class ClientHandler implements Connectable {
                                 tokens = str.split(" ", 3);
                                 if (tokens.length == 3) {
                                     server.privateMessage(this, server.getClientByNick(tokens[1]), tokens[2]);
+                                }
+                                break;
+                            case MSG_NICK:
+                                tokens = str.split(" ", 2);
+                                boolean nickResult = server.getAuthService().changeNickname(nick, tokens[1]);
+
+                                if (nickResult) {
+                                    nickOk(tokens[1]);
+                                } else {
+                                    sysMsg("Не удалось изменить никнейм!");
                                 }
                                 break;
                             // Обычное сообщение
@@ -97,7 +109,7 @@ public class ClientHandler implements Connectable {
                     }
                 } catch (SocketTimeoutException e) {
                     System.out.println("Клиент вышел по таймауту");
-                    sendMsg(server.systemUser.getNickname(), "Вы слишком долго были неактивны, отключение...");
+                    sysMsg("Вы слишком долго были неактивны, отключение...");
                     disconnect(true);
                 } catch (IOException e) {
                     disconnect(true);
@@ -123,11 +135,15 @@ public class ClientHandler implements Connectable {
         }
     }
 
+    public void sysMsg(String msg) {
+        sendMsg(server.systemUser.getNickname(), msg);
+    }
+
     void disconnect(boolean silent) {
         try {
             // Прощаемся
             if (!silent) {
-                sendMsg(server.systemUser.getNickname(), "Отключение...");
+                sysMsg("Отключение...");
             }
 
             // Уведомляем остальных
@@ -156,6 +172,8 @@ public class ClientHandler implements Connectable {
             res = MSG_WHISPER;
         } else if (msg.startsWith("/reg ")) { // Запрос на регистрацию
             res = MSG_REG;
+        } else if (msg.startsWith("/nick ")) { // Запрос на регистрацию
+            res = MSG_NICK;
         }
 
         return res;
@@ -179,12 +197,25 @@ public class ClientHandler implements Connectable {
         server.broadcast(server.systemUser, nick + " вошел в чат", this);
 
         // А потом отправляем себе приветствие
-        sendMsg(server.systemUser.getNickname(), "Добро пожаловать в чат, " + nick);
+        sysMsg("Добро пожаловать в чат, " + nick);
 
         try {
             socket.setSoTimeout(0);
         } catch (SocketException e) {
             e.printStackTrace();
         }
+    }
+
+    private void nickOk(String newNick) {
+        // Cообщаем всем, что мы переименовались
+        server.broadcast(server.systemUser, nick + " меняет никнейм на \"" + newNick + "\"!", this);
+
+        // Себе любимому другой текст и команду на смену титула
+        sysMsg("/nickok " + newNick);
+        sysMsg("Ваш никнейм изменен на \"" + newNick + "\"!");
+
+        // Обновляем здесь никнейм и обновляем списки у всех
+        nick = newNick;
+        server.sendClientList();
     }
 }
