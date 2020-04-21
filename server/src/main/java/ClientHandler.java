@@ -108,7 +108,7 @@ public class ClientHandler implements Connectable {
                         }
                     }
                 } catch (SocketTimeoutException e) {
-                    System.out.println("Клиент вышел по таймауту");
+                    server.logger.info("Клиент вышел по таймауту");
                     sysMsg("Вы слишком долго были неактивны, отключение...");
                     disconnect(true);
                 } catch (IOException e) {
@@ -152,7 +152,7 @@ public class ClientHandler implements Connectable {
             // Подчищаем за клиентом
             socket.close();
             server.removeClient(this);
-            System.out.println(this.nick + " ушел");
+            server.logger.info("Клиент " + nick + " ушел");
         } catch (IOException ignore) {}
     }
 
@@ -189,7 +189,7 @@ public class ClientHandler implements Connectable {
 
         // Отправляем клиенту его ник. Здесь отправитель роли не играет
         sendMsg(nick, "/authok " + nick);
-        System.out.println("Клиент " + nick + " прошел аутентификацию");
+        server.logger.info("Клиент " + nick + " прошел аутентификацию");
 
         server.addClient(this);
 
