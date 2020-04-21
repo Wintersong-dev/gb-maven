@@ -14,11 +14,10 @@ import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.stage.WindowEvent;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.net.URL;
+import java.util.List;
 import java.util.ResourceBundle;
 
 
@@ -42,14 +41,16 @@ public class Controller implements Initializable {
 
     private final String IP_ADDR = "localhost";
     private final int PORT = 9876;
-    private boolean isAuth = false;
-    private String nickname;
     private final String NO_AUTH = "Chat lobby";
     private final int MSG_COMMON = 0;
     private final int MSG_AUTHOK = 1;
     private final int MSG_CLIST = 2;
     private final int MSG_NICKOK = 3;
 
+
+    private boolean isAuth = false;
+    private String nickname;
+    private FileManager fm;
 
     private Socket socket;
     private DataInputStream in;
@@ -74,6 +75,7 @@ public class Controller implements Initializable {
 
     public void setNickname(String nickname) {
         this.nickname = nickname;
+        fm.setNickname(nickname);
         setTitle("Chat: " + nickname);
     }
 
@@ -103,18 +105,17 @@ public class Controller implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setTitle(NO_AUTH);
+        fm = new FileManager();
         Platform.runLater(() -> {
             Window scene = textArea.getScene().getWindow();
-            scene.setOnCloseRequest(new EventHandler<WindowEvent>() {
-                @Override
-                public void handle(WindowEvent windowEvent) {
-                    try {
-                        socket.close();
-                        setAuth(false);
-                        regStage = null;
-                        nickStage = null;
-                    } catch (IOException | NullPointerException ignore) {}
-                }
+            scene.setOnCloseRequest(windowEvent -> {
+                try {
+                    socket.close();
+                    fm.closeFile();
+                    setAuth(false);
+                    regStage = null;
+                    nickStage = null;
+                } catch (IOException | NullPointerException ignore) {}
             });
         });
 
@@ -130,18 +131,33 @@ public class Controller implements Initializable {
             new Thread(() -> {
                 String str;
                 try {
+                    textArea.clear();
                     while (true) {
                         str = in.readUTF();
                         if (parseMsg(str) == MSG_AUTHOK) {
                             setNickname(str.split(" ")[1]);
                             setAuth(true);
+
                             break;
                         }
                         textArea.setText(str);
                     }
 
+                    List<String> textFromFile = fm.readFile();
+                    int len = textFromFile.size();
+
+                    // Оставляем только последние 100
+                    if (len > 100) {
+                        for (int i = 0; i < (len - 100); i++) {
+                            textFromFile.remove(0);
+                        }
+                    }
+
+                    for (String elem : textFromFile) {
+                        textArea.appendText(elem + "\n");
+                    }
+
                     Platform.runLater(() -> {
-                        textArea.clear();
                         msgField.requestFocus();
                     });
 
@@ -163,6 +179,7 @@ public class Controller implements Initializable {
             try {
                 socket.close();
                 setTitle(NO_AUTH);
+                fm.closeFile();
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
@@ -191,6 +208,7 @@ public class Controller implements Initializable {
                 break;
             case MSG_COMMON:
                 textArea.appendText(str + "\n");
+                fm.append(str + "\n");
         }
     }
 
