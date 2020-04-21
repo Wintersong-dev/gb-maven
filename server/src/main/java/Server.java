@@ -2,11 +2,13 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Vector;
+import java.util.logging.Logger;
 
 public class Server {
     private Vector<ClientHandler> clients;
     private AuthService authService;
     Connectable systemUser = new SysClient();
+    Logger logger;
 
     final int PORT = 9876;
 
@@ -14,20 +16,23 @@ public class Server {
         clients = new Vector<>();
         ServerSocket server = null;
         Socket socket = null;
+        logger = Logger.getGlobal();
+
         //authService = new SimpleAuth(this);
         authService = new DBAuthService(this);
         try {
             server = new ServerSocket(PORT);
-            System.out.println("Сервер запущен");
+            logger.severe("Сервер запущен");
 
             while (true) {
                 socket = server.accept();
-                System.out.println("Новый клиент!");
+                logger.info("Новый клиент!");
                 new ClientHandler(socket, this);
             }
 
         // Сервер упал
         } catch (IOException e) {
+            logger.severe("Неполадки на сервере, отключение...");
             broadcast(systemUser, "Неполадки на сервере, отключение...", systemUser);
             for (ClientHandler client : clients) {
                 client.disconnect(false);
